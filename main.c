@@ -13,7 +13,7 @@ void uart0_init(void){
 	PINSEL0 |= (1<<0) | (1<<2); //Enable UART0 on P0.0(TX) and P0.1(RX)
 	U0FCR = 0x07;
 	U0LCR = 0x83;
-	U0DLL = 32; 
+	U0DLL = 32; //115200 Baud
 	U0DLM = 0;
 	U0LCR = 0x03; 
 }
@@ -22,8 +22,8 @@ void uart1_init(void){
 	PINSEL0 |= (1<<16) | (1<<18); //Enable UART1 on P0.8(TX) and P0.9(RX)
 	U1FCR = 0x07;
 	U1LCR = 0x83;
-	U1DLL = 56; 
-	U1DLM = 1;
+	U1DLL = 0x87; //9600 Baud
+	U1DLM = 0x01;
 	U1LCR = 0x03; 
 }
 
@@ -31,9 +31,13 @@ int lcount = 0;
 int rcount = 0;
 
 void left_enc_ISR(){
+	VICIntEnClr |= (1 << 16); //Turn off EINT2 interrupt
+	EXTPOLAR ^= (1 << 2); //Change polarity of interrupt
+	VICIntEnable |= (1 << 16); //Turn interrupts back on.
+	FIO1PIN  ^=	1 << 20;
 	lcount++;
 	printf("Left tick # %d\n\r", lcount);
-	if(lcount == 12){
+	if(lcount == 24){
 		U0THR = 0xC1;
 		U0THR = 0;
 	}
@@ -41,9 +45,13 @@ void left_enc_ISR(){
 }
 
 void right_enc_ISR(){
+	VICIntEnClr |= (1 << 14); //Turn off EINT0 interrupt
+	EXTPOLAR ^= (1 << 0); //Change polarity of interrupt
+	VICIntEnable |= (1 << 14); //Turn interrupts back on.
+	FIO1PIN  ^=	1 << 20;
 	rcount++;
 	printf("Right tick  # %d\n\r", rcount);
-	if(rcount == 12){
+	if(rcount == 24){
 		U0THR = 0xC6;
 		U0THR = 0;
 	}
@@ -69,7 +77,9 @@ int	main (void)
 	EXTMODE = (1 << 0) | (1 << 2); //EINT0 and EINT2 are edge sensitive.
 	EXTPOLAR = (1 << 0) | (1 << 2); //Rising edge sensitive. 
 	
-	printf("Starting up...\n\r");	//Let anyone debugging through USB know we are around.
+	printf("Pins Setup...\n\r");	//Let anyone debugging through USB know we are around.
+	U1THR = 'O';
+	U1THR = 'K';
 	FIO1CLR  =	1 << 20;			//Turn on status LED. 
 	
 	VIC_registerIRQ(right_enc_ISR, EINT0_IRQn, 2);	//EINT0 is the right wheel encoder.
@@ -80,19 +90,26 @@ int	main (void)
 	VIC_enableIRQ(EINT0_IRQn);	//Enable interrupts on EINT0
 	VIC_enableIRQ(EINT2_IRQn);	//Enable interrupts on EINT2
 	
+	printf("Interrupts Enabled...\n\r");	//Let anyone debugging through USB know we are around.
+	U1THR = 'O';
+	U1THR = 'K';
+	
 	//AD1CR = (1 << 0) | (1 << 1) | (1 << 2) | (13 << 8) | (1 << 16) | (1 << 21);
 	
 	//FIO1SET = (1<<30) | (1<<29) | (1<<28);
 	// RIGHT 	MIDDLE 		LEFT
 	
 	U0THR = 0xC1;
-	U0THR = 20;
+	U0THR = 0;
 	U0THR = 0xC6;
-	U0THR = 20;
+	U0THR = 0;
 	
 	int cmd = 0;
 	
+	
 	while(1){
+		
+		
 		
 		cmd = getc(stdin);
 		if(cmd == 'r'){
@@ -101,7 +118,7 @@ int	main (void)
 			U0THR = 0xC1;
 			U0THR = 20;
 			U0THR = 0xC6;
-			U0THR = 20;
+			U0THR = 21;
 		}
 		if(cmd == 'l'){
 			lcount = 0;
@@ -109,7 +126,7 @@ int	main (void)
 			U0THR = 0xC2;
 			U0THR = 20;
 			U0THR = 0xC5;
-			U0THR = 20;
+			U0THR = 21;
 		}
 		
 	}
