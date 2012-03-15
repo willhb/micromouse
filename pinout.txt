@@ -1,0 +1,21 @@
+LPC2148 Pinouts for 3pi Micromouse
+
+See: http://openlpc.com/4e26f1/hardware2148
+
+P0.0		TXD0		TX to 3pi
+P0.1		RXD0		RX from 3pi
+
+P0.6		AD1.0		Wall Sensor
+
+P0.8		TXD1		TX to XBee
+P0.9		RXD1		RX from Xbee
+
+P0.10		AD1.2		Wall Sensor
+P0.12		AD1.3		Wall Sensor
+P0.13		AD1.4		Wall Sensor
+
+P0.14		Button		OpenLPC User Button
+
+P0.15		EINT0		Wheel Encoder
+P0.16		EINT3		Wheel Encoder
+
