@@ -2,8 +2,9 @@
 #include <lpc2148/lpc214x.h>
 #include <lpc2148/openlpc.h>
 
-#define SENSOR_L        ((AD1DR2 >> 6) & 0x3ff)         // index 2
-#define SENSOR_F        ((AD1DR1 >> 6) & 0x3ff)         // index 1
+#define SENSOR_B		((AD1DR4 >> 6) & 0x3ff)			// index 4
+#define SENSOR_L        ((AD1DR3 >> 6) & 0x3ff)         // index 3
+#define SENSOR_F        ((AD1DR2 >> 6) & 0x3ff)         // index 2
 #define SENSOR_R        ((AD1DR0 >> 6) & 0x3ff)         // index 0
 
 void uart0_init(void);
@@ -91,13 +92,11 @@ int	main (void)
 	VIC_enableIRQ(EINT2_IRQn);	//Enable interrupts on EINT2
 	
 	printf("Interrupts Enabled...\n\r");	//Let anyone debugging through USB know we are around.
-	U1THR = 'O';
+	U1THR = 'O';	//Let anyone debugging over wireless know we are around.
 	U1THR = 'K';
 	
-	//AD1CR = (1 << 0) | (1 << 1) | (1 << 2) | (13 << 8) | (1 << 16) | (1 << 21);
-	
-	//FIO1SET = (1<<30) | (1<<29) | (1<<28);
-	// RIGHT 	MIDDLE 		LEFT
+	AD1CR |= (1 << 0) | (1 << 2) | (1 << 3) | (1 << 4); //AD pins 0,2,3,4 are inputs
+	AD1CR |= (15 << 8) | (1 << 16) | (1 << 21); //(60/15) = 4MHz ADC clock, burst mode, ADC power on.
 	
 	U0THR = 0xC1;
 	U0THR = 0;
@@ -109,10 +108,10 @@ int	main (void)
 	
 	while(1){
 		
-		
+		printf("Left: %ld\n\rRight: %ld\n\rCenter: %ld\n\rBack: %ld\n\r", SENSOR_L, SENSOR_R, SENSOR_F, SENSOR_B);
 		
 		cmd = getc(stdin);
-		if(cmd == 'r'){
+		if(cmd == 'd'){
 			lcount = 0;
 			rcount = 0;
 			U0THR = 0xC1;
@@ -120,13 +119,37 @@ int	main (void)
 			U0THR = 0xC6;
 			U0THR = 21;
 		}
-		if(cmd == 'l'){
+		if(cmd == 'a'){
 			lcount = 0;
 			rcount = 0;
 			U0THR = 0xC2;
 			U0THR = 20;
 			U0THR = 0xC5;
 			U0THR = 21;
+		}
+		if(cmd == 'w'){
+			lcount = 0;
+			rcount = 0;
+			U0THR = 0xC1;
+			U0THR = 20;
+			U0THR = 0xC5;
+			U0THR = 21;
+		}
+		if(cmd == 's'){
+			lcount = 0;
+			rcount = 0;
+			U0THR = 0xC2;
+			U0THR = 20;
+			U0THR = 0xC6;
+			U0THR = 21;
+		}
+		if(cmd == '1'){
+			FIO1SET = (1<<30) | (1<<29) | (1<<28); // RIGHT 	MIDDLE 		LEFT
+			
+		}
+		if(cmd == '0'){
+			FIO1CLR = (1<<30) | (1<<29) | (1<<28); // RIGHT 	MIDDLE 		LEFT
+			
 		}
 		
 	}

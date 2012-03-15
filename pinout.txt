@@ -16,6 +16,6 @@ P0.13		AD1.4		Wall Sensor
 
 P0.14		Button		OpenLPC User Button
 
-P0.15		EINT0		Wheel Encoder
-P0.16		EINT3		Wheel Encoder
+P0.15		EINT2		Wheel Encoder
+P0.16		EINT0		Wheel Encoder
 
