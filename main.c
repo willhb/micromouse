@@ -30,18 +30,26 @@ void uart1_init(void){
 
 int lcount = 0;
 int rcount = 0;
+int move = 0;
+int count = 0;	
+int finished = 0;
+
+
 
 void left_enc_ISR(){
 	VICIntEnClr |= (1 << 16); //Turn off EINT2 interrupt
 	EXTPOLAR ^= (1 << 2); //Change polarity of interrupt
 	VICIntEnable |= (1 << 16); //Turn interrupts back on.
 	FIO1PIN  ^=	1 << 20;
-	lcount++;
-	printf("Left tick # %d\n\r", lcount);
-	if(lcount == 24){
+	printf("L: %d\n\r", lcount);
+	if(lcount <= 0){
 		U0THR = 0xC1;
 		U0THR = 0;
+		finished--;
+	} else {
+		lcount--;	
 	}
+	
 	EXTINT = (1<<2); //Clear interrupt flag on EINT2
 }
 
@@ -50,13 +58,141 @@ void right_enc_ISR(){
 	EXTPOLAR ^= (1 << 0); //Change polarity of interrupt
 	VICIntEnable |= (1 << 14); //Turn interrupts back on.
 	FIO1PIN  ^=	1 << 20;
-	rcount++;
-	printf("Right tick  # %d\n\r", rcount);
-	if(rcount == 24){
-		U0THR = 0xC6;
+	printf("R: %d\n\r", rcount);
+	if(rcount <= 0){
+		U0THR = 0xC5;
 		U0THR = 0;
+		finished--;
+	} else {
+		rcount--;
 	}
+	
 	EXTINT = (1<<0); //Clear interrupt flag on EINT0
+}
+
+
+
+int difference = 0;
+int pid = 0;
+int prev_diff = 0;
+int abs_diff = 0;
+int integral = 0;
+
+
+
+
+int kp = 2;
+int kd = .1;
+int ki = .5;
+
+
+
+void wheel_PID(){
+	
+	int difference = lcount - rcount;
+	
+	int l_sensor = SENSOR_L;
+	int r_sensor = SENSOR_R;
+	int f_sensor = SENSOR_F;
+
+	int sensor_diff = l_sensor-r_sensor;
+	
+	if(sensor_diff < 0){
+		sensor_diff = -sensor_diff;
+	}
+
+	printf("difference: %d\n\r", difference);
+
+	
+	if(l_sensor < 500){
+		difference += 15 - l_sensor/40;
+
+	}
+	if(r_sensor < 500){
+		difference -= 15 - r_sensor/40;
+
+	}
+
+
+	if(difference < 5){
+		integral = 0;
+	} else {
+		integral += difference;
+	}
+	
+	pid = difference*kp + (difference - prev_diff)*kd + integral*ki;
+	
+	prev_diff = difference;
+	
+	U0THR = 0xC1;
+	U0THR = 30 + pid;
+	U0THR = 0xC5;
+	U0THR = 30 - pid;
+}
+
+void rotate_180(){
+	
+	lcount = 50;
+	rcount = 50;
+	
+
+	
+	printf("hello");
+	
+	while((lcount > 0) && (rcount > 0))
+	{
+	printf("rotating");
+	U0THR = 0xC2;
+	U0THR = 30;
+	U0THR = 0xC5;
+	U0THR = 30;
+	}
+	
+	lcount = 60;
+	rcount = 60;
+	
+}
+
+void rotate_left(){
+	
+	lcount = 25;
+	rcount = 25;
+	
+	printf("hello");
+	
+	while((lcount > 0) && (rcount > 0))
+	{
+		printf("rotating");
+	U0THR = 0xC2;
+	U0THR = 30;
+	U0THR = 0xC5;
+	U0THR = 30;
+	}
+	
+	lcount = 60;
+	rcount = 60;
+	
+}
+
+void rotate_right(){
+	
+	lcount = 24;
+	rcount = 24;
+	
+	printf("hello");
+	
+	while((lcount > 0) && (rcount > 0))
+	{
+	printf("rotating");
+	U0THR = 0xC1;
+	U0THR = 30;
+	U0THR = 0xC6;
+	U0THR = 30;
+	}
+	
+	lcount = 60;
+	rcount = 60;
+	
 }
 
 int	main (void)
@@ -105,57 +241,42 @@ int	main (void)
 	
 	int cmd = 0;
 	
+	FIO1SET = (1<<30) | (1<<29) | (1<<28); //Turn on IR LEDs
 	
+	printf("%ld %ld %ld", SENSOR_F,SENSOR_L,SENSOR_R);
+	
+	int interval = set_interval(wheel_PID, 1);
+	
+	lcount = 60;
+	rcount = 60;
+		
 	while(1){
 		
-		printf("Left: %ld\n\rRight: %ld\n\rCenter: %ld\n\rBack: %ld\n\r", SENSOR_L, SENSOR_R, SENSOR_F, SENSOR_B);
-		
-		cmd = getc(stdin);
-		if(cmd == 'd'){
-			lcount = 0;
-			rcount = 0;
-			U0THR = 0xC1;
-			U0THR = 20;
-			U0THR = 0xC6;
-			U0THR = 21;
+		if(SENSOR_F < 580){
+			clear_interval(interval);
+			printf("cleared");
+			if(SENSOR_R > 650 & SENSOR_L > 650){
+				if(millis()%2){
+					rotate_right();
+				} else {
+					rotate_left();
+				}
+			} else if(SENSOR_R > 650) {
+				rotate_right();
+			} else if(SENSOR_L > 650) {
+				rotate_left();
+			}	else {
+			rotate_180();
+			}
+			difference = 0;
+			pid = 0;
+			prev_diff = 0;
+			abs_diff = 0;
+			integral = 0;
+			interval = set_interval(wheel_PID, 1);
+			printf("set");
 		}
-		if(cmd == 'a'){
-			lcount = 0;
-			rcount = 0;
-			U0THR = 0xC2;
-			U0THR = 20;
-			U0THR = 0xC5;
-			U0THR = 21;
-		}
-		if(cmd == 'w'){
-			lcount = 0;
-			rcount = 0;
-			U0THR = 0xC1;
-			U0THR = 20;
-			U0THR = 0xC5;
-			U0THR = 21;
-		}
-		if(cmd == 's'){
-			lcount = 0;
-			rcount = 0;
-			U0THR = 0xC2;
-			U0THR = 20;
-			U0THR = 0xC6;
-			U0THR = 21;
-		}
-		if(cmd == '1'){
-			FIO1SET = (1<<30) | (1<<29) | (1<<28); // RIGHT 	MIDDLE 		LEFT
-			
-		}
-		if(cmd == '0'){
-			FIO1CLR = (1<<30) | (1<<29) | (1<<28); // RIGHT 	MIDDLE 		LEFT
-			
-		}
-		
-	}
-
-
 	
-
+	}
 }
 
